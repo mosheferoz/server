@@ -1,10 +1,72 @@
+import sys
+import os
+import subprocess
+import json
+
+def setup_environment():
+    try:
+        # התקנת pip אם לא קיים
+        try:
+            subprocess.check_call([sys.executable, '-m', 'ensurepip', '--default-pip'])
+            print(json.dumps({"status": "Successfully installed pip"}, ensure_ascii=False))
+        except:
+            print(json.dumps({"status": "Pip is already installed"}, ensure_ascii=False))
+
+        # יצירת והפעלת venv אם לא קיים
+        venv_path = os.path.join(os.path.dirname(__file__), '../venv')
+        if not os.path.exists(venv_path):
+            subprocess.check_call([sys.executable, '-m', 'venv', venv_path])
+            print(json.dumps({"status": "Created virtual environment"}, ensure_ascii=False))
+
+        # הפעלת הסביבה הווירטואלית
+        if os.name == 'nt':  # Windows
+            activate_script = os.path.join(venv_path, 'Scripts', 'activate.bat')
+        else:  # Linux/Mac
+            activate_script = os.path.join(venv_path, 'bin', 'activate')
+
+        if os.path.exists(activate_script):
+            if os.name == 'nt':
+                os.system(f'call {activate_script}')
+            else:
+                os.system(f'source {activate_script}')
+            print(json.dumps({"status": "Activated virtual environment"}, ensure_ascii=False))
+        
+        # שדרוג pip בסביבה הווירטואלית
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip'])
+        print(json.dumps({"status": "Upgraded pip"}, ensure_ascii=False))
+        
+    except Exception as e:
+        print(json.dumps({
+            "error": "Failed to setup environment",
+            "details": str(e)
+        }, ensure_ascii=False), file=sys.stderr)
+        sys.exit(1)
+
+def install_requirements():
+    try:
+        requirements_path = os.path.join(os.path.dirname(__file__), '../requirements.txt')
+        if os.path.exists(requirements_path):
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', requirements_path])
+            print(json.dumps({"status": "Successfully installed requirements"}, ensure_ascii=False))
+        else:
+            print(json.dumps({"error": "requirements.txt not found"}, ensure_ascii=False), file=sys.stderr)
+            sys.exit(1)
+    except Exception as e:
+        print(json.dumps({
+            "error": "Failed to install requirements",
+            "details": str(e)
+        }, ensure_ascii=False), file=sys.stderr)
+        sys.exit(1)
+
+# הגדרת הסביבה והתקנת חבילות
+setup_environment()
+install_requirements()
+
 import requests
 import json
 import warnings
 import urllib3
-import sys
 import traceback
-import os
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
