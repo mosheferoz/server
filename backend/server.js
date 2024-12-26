@@ -69,19 +69,26 @@ app.use((err, req, res, next) => {
 })();
 
 // הגעלת השרת
-const startServer = async (retries = 3) => {
+const startServer = async () => {
+  // קבלת הפורט מRender או שימוש בברירת מחדל
   const PORT = process.env.PORT || 3000;
   
   try {
+    // הגדרת האזנה לכל הממשקים
+    const options = {
+      port: PORT,
+      host: '0.0.0.0'
+    };
+
     await new Promise((resolve, reject) => {
-      // האזנה עק לפורט, בלי לציין host
-      server.listen(PORT)
+      server.listen(options)
         .once('error', (err) => {
           logger.error('Server error:', err);
           reject(err);
         })
         .once('listening', () => {
-          logger.info(`Server running on port ${PORT}`);
+          const addr = server.address();
+          logger.info(`Server is running on port ${addr.port}`);
           resolve();
         });
     });
