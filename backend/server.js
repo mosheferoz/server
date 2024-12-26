@@ -74,30 +74,11 @@ const startServer = async (retries = 3) => {
   
   try {
     await new Promise((resolve, reject) => {
-      server.listen(PORT)
+      // האזנה על כל הממשקים (0.0.0.0)
+      server.listen(PORT, '0.0.0.0')
         .once('error', (err) => {
-          if (err.code === 'EADDRINUSE') {
-            logger.warn(`Port ${PORT} is busy, trying to close existing connection...`);
-            if (process.env.NODE_ENV !== 'production') {
-              require('child_process').exec(`npx kill-port ${PORT}`, async (error) => {
-                if (error) {
-                  logger.error('Failed to kill port:', error);
-                  if (retries > 0) {
-                    logger.info(`Retrying... (${retries} attempts left)`);
-                    setTimeout(() => startServer(retries - 1), 1000);
-                  } else {
-                    reject(error);
-                  }
-                } else {
-                  setTimeout(() => startServer(retries), 1000);
-                }
-              });
-            } else {
-              reject(err);
-            }
-          } else {
-            reject(err);
-          }
+          logger.error('Server error:', err);
+          reject(err);
         })
         .once('listening', () => {
           logger.info(`Server running on port ${PORT}`);
