@@ -71,16 +71,14 @@ app.use((err, req, res, next) => {
 // הגעלת השרת
 const startServer = async (retries = 3) => {
   const PORT = process.env.PORT || 3000;
-  const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
   
   try {
     await new Promise((resolve, reject) => {
-      server.listen(PORT, HOST)
+      server.listen(PORT)
         .once('error', (err) => {
           if (err.code === 'EADDRINUSE') {
             logger.warn(`Port ${PORT} is busy, trying to close existing connection...`);
             if (process.env.NODE_ENV !== 'production') {
-              // רק בסביבת פיתוח ננסה לשחרר את הפורט
               require('child_process').exec(`npx kill-port ${PORT}`, async (error) => {
                 if (error) {
                   logger.error('Failed to kill port:', error);
@@ -102,7 +100,7 @@ const startServer = async (retries = 3) => {
           }
         })
         .once('listening', () => {
-          logger.info(`Server running on ${process.env.NODE_ENV === 'production' ? PORT : `http://${HOST}:${PORT}`}`);
+          logger.info(`Server running on port ${PORT}`);
           resolve();
         });
     });
