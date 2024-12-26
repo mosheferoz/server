@@ -4,6 +4,7 @@ import warnings
 import urllib3
 import sys
 import traceback
+import os
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -13,6 +14,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.os_manager import ChromeType
 
 # ביטול כל האזהרות הקשורות ל-SSL
 warnings.filterwarnings('ignore', message='Unverified HTTPS request')
@@ -30,7 +32,13 @@ def setup_driver():
         chrome_options.add_argument('--disable-extensions')
         chrome_options.add_argument('--disable-infobars')
         
-        service = Service(ChromeDriverManager().install())
+        # התקנת Chrome באופן מפורש
+        os.system('apt-get update && apt-get install -y chromium-browser')
+        
+        # הגדרת הנתיב ל-Chrome
+        chrome_options.binary_location = '/usr/bin/chromium-browser'
+        
+        service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         return driver
     except Exception as e:

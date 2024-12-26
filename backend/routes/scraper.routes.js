@@ -8,29 +8,30 @@ const logger = require('../logger');
 router.post('/scrape', async (req, res) => {
     try {
         const { url } = req.body;
-        logger.info('Received scraping request for URL:', url);
+        logger.info(`התחלת תהליך סקרייפינג עבור URL: ${url}`);
         
         if (!url) {
-            logger.warn('No URL provided in request');
+            logger.warn('לא סופק URL בבקשה');
             return res.status(400).json({ error: 'URL is required' });
         }
 
         if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            logger.warn('Invalid URL format:', url);
+            logger.warn(`פורמט URL לא תקין: ${url}`);
             return res.status(400).json({ error: 'Invalid URL format. URL must start with http:// or https://' });
         }
 
         const pythonScriptPath = path.join(__dirname, '../services/python_scraper.py');
-        logger.info('Python script path:', pythonScriptPath);
+        logger.info(`נתיב סקריפט Python: ${pythonScriptPath}`);
         
-        // בדיקת נתיב הסביבה הוירטואלית
-        const venvPath = process.env.PYTHON_VENV_PATH || path.join(process.cwd(), 'venv');
-        const pythonPath = path.join(
-            venvPath,
-            'bin',
-            'python'
-        );
-        logger.info('Using Python path:', pythonPath);
+        const pythonPath = 'python3';
+        logger.info(`משתמש בנתיב Python: ${pythonPath}`);
+        
+        // בדיקה שהסקריפט קיים
+        const fs = require('fs');
+        if (!fs.existsSync(pythonScriptPath)) {
+            logger.error(`סקריפט Python לא נמצא בנתיב: ${pythonScriptPath}`);
+            return res.status(500).json({ error: 'Python script not found' });
+        }
         
         const pythonProcess = spawn(pythonPath, [pythonScriptPath, url]);
 
@@ -38,18 +39,19 @@ router.post('/scrape', async (req, res) => {
         let errorString = '';
 
         pythonProcess.stdout.on('data', (data) => {
-            logger.debug('Python stdout:', data.toString());
-            dataString += data.toString();
+            const output = data.toString();
+            logger.debug(`פלט Python: ${output}`);
+            dataString += output;
         });
 
         pythonProcess.stderr.on('data', (data) => {
-            logger.error('Python stderr:', data.toString());
-            errorString += data.toString();
+            const error = data.toString();
+            logger.error(`שגיאת Python: ${error}`);
+            errorString += error;
         });
 
-        // טיפול בשגיאות תהליך
         pythonProcess.on('error', (error) => {
-            logger.error('Failed to start Python process:', error);
+            logger.error(`כשל בהפעלת תהליך Python: ${error.message}`);
             res.status(500).json({ 
                 error: 'Failed to start scraping process',
                 details: error.message
@@ -57,14 +59,13 @@ router.post('/scrape', async (req, res) => {
         });
 
         pythonProcess.on('close', (code) => {
-            logger.info('Python process exited with code:', code);
+            logger.info(`תהליך Python הסתיים עם קוד: ${code}`);
             
             if (code !== 0) {
-                logger.error('Python process failed');
-                logger.error('Error output:', errorString);
+                logger.error('תהליך Python נכשל');
+                logger.error(`פלט שגיאה: ${errorString}`);
                 
                 try {
-                    // נסה לפרסר את השגיאה מ-Python
                     const errorObj = JSON.parse(errorString);
                     return res.status(500).json({ 
                         error: 'Failed to scrape data',
@@ -79,22 +80,22 @@ router.post('/scrape', async (req, res) => {
             }
 
             try {
-                logger.debug('Trying to parse Python output:', dataString);
+                logger.debug(`מנסה לפרסר פלט Python: ${dataString}`);
                 const result = JSON.parse(dataString);
                 
                 if (!result.eventName) {
-                    logger.warn('No event name found in scraped data');
+                    logger.warn('לא נמצא שם אירוע בנתונים שנאספו');
                     return res.status(404).json({ 
                         error: 'No event data found',
                         details: 'Could not find event information on the page'
                     });
                 }
                 
-                logger.info('Successfully scraped data:', result);
+                logger.info(`נאספו נתונים בהצלחה: ${JSON.stringify(result)}`);
                 res.json(result);
             } catch (error) {
-                logger.error('Failed to parse Python output:', error);
-                logger.error('Raw output:', dataString);
+                logger.error(`כשל בפרסור פלט Python: ${error.message}`);
+                logger.error(`פלט גולמי: ${dataString}`);
                 res.status(500).json({ 
                     error: 'Failed to parse scraped data',
                     details: error.message,
@@ -104,7 +105,7 @@ router.post('/scrape', async (req, res) => {
         });
 
     } catch (error) {
-        logger.error('Server error:', error);
+        logger.error(`שגיאת שרת: ${error.message}`);
         res.status(500).json({ 
             error: 'Internal server error',
             details: error.message
