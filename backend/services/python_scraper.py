@@ -21,15 +21,15 @@ def setup_environment():
         # הפעלת הסביבה הווירטואלית
         if os.name == 'nt':  # Windows
             activate_script = os.path.join(venv_path, 'Scripts', 'activate.bat')
+            if os.path.exists(activate_script):
+                os.system(f'call {activate_script}')
         else:  # Linux/Mac
             activate_script = os.path.join(venv_path, 'bin', 'activate')
-
-        if os.path.exists(activate_script):
-            if os.name == 'nt':
-                os.system(f'call {activate_script}')
-            else:
-                os.system(f'source {activate_script}')
-            print(json.dumps({"status": "Activated virtual environment"}, ensure_ascii=False))
+            if os.path.exists(activate_script):
+                # במקום להשתמש ב-source, נשתמש בפקודה . שהיא יותר נפוצה
+                os.system(f'. {activate_script}')
+        
+        print(json.dumps({"status": "Activated virtual environment"}, ensure_ascii=False))
         
         # שדרוג pip בסביבה הווירטואלית
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip'])
@@ -94,11 +94,31 @@ def setup_driver():
         chrome_options.add_argument('--disable-extensions')
         chrome_options.add_argument('--disable-infobars')
         
-        # התקנת Chrome באופן מפורש
-        os.system('apt-get update && apt-get install -y chromium-browser')
+        # התקנת Chrome באופן מפורש עם הרשאות sudo
+        try:
+            os.system('sudo apt-get update && sudo apt-get install -y chromium-browser')
+        except:
+            print(json.dumps({"status": "Failed to install Chrome with sudo, trying without"}, ensure_ascii=False))
+            os.system('apt-get update && apt-get install -y chromium-browser')
         
-        # הגדרת הנתיב ל-Chrome
-        chrome_options.binary_location = '/usr/bin/chromium-browser'
+        # בדיקה אם Chrome הותקן בהצלחה
+        chrome_paths = [
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium',
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable'
+        ]
+        
+        chrome_binary = None
+        for path in chrome_paths:
+            if os.path.exists(path):
+                chrome_binary = path
+                break
+                
+        if not chrome_binary:
+            raise Exception("Chrome binary not found in any expected location")
+            
+        chrome_options.binary_location = chrome_binary
         
         service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
