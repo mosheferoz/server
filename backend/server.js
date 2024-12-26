@@ -46,9 +46,41 @@ app.use('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// הוסף את זה לפני הטיפול בשגיאות 404
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    message: 'WhatsApp Bulk Sender API',
+    endpoints: {
+      health: '/api/health',
+      whatsapp: {
+        qr: '/api/whatsapp/qr/:sessionId',
+        status: '/api/whatsapp/status/:sessionId',
+        send: '/api/whatsapp/send',
+        history: '/api/whatsapp/history'
+      },
+      scraper: '/api/scraper/scrape'
+    }
+  });
+});
+
 // טיפול בשגיאות 404
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  logger.warn(`404 - Route not found: ${req.method} ${req.url}`);
+  res.status(404).json({ 
+    error: 'Route not found',
+    requestedPath: req.url,
+    availableEndpoints: {
+      health: '/api/health',
+      whatsapp: {
+        qr: '/api/whatsapp/qr/:sessionId',
+        status: '/api/whatsapp/status/:sessionId',
+        send: '/api/whatsapp/send',
+        history: '/api/whatsapp/history'
+      },
+      scraper: '/api/scraper/scrape'
+    }
+  });
 });
 
 // טיפול בשגיאות כלליות
