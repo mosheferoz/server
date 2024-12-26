@@ -74,8 +74,8 @@ const startServer = async (retries = 3) => {
   
   try {
     await new Promise((resolve, reject) => {
-      // האזנה על כל הממשקים (0.0.0.0)
-      server.listen(PORT, '0.0.0.0')
+      // האזנה עק לפורט, בלי לציין host
+      server.listen(PORT)
         .once('error', (err) => {
           logger.error('Server error:', err);
           reject(err);
