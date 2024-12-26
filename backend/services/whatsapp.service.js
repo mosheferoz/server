@@ -83,15 +83,22 @@ class WhatsAppService {
             '--no-first-run',
             '--no-zygote',
             '--disable-gpu',
+            '--disable-extensions',
+            '--disable-software-rasterizer',
             '--aggressive-cache-discard',
             '--disable-cache',
             '--disable-application-cache',
             '--disable-offline-load-stale-cache',
             '--disk-cache-size=0'
           ],
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
           timeout: 120000,
           waitForInitialPage: true,
         }
+      });
+
+      client.on('loading_screen', (percent, message) => {
+        logger.info(`WhatsApp loading: ${percent}% - ${message}`);
       });
 
       client.on('ready', () => {
@@ -112,6 +119,10 @@ class WhatsAppService {
         }
       });
 
+      client.on('change_state', state => {
+        logger.info(`WhatsApp state changed to: ${state}`);
+      });
+
       client.on('authenticated', () => {
         this.isConnected.set(validSessionId, true);
         this.qrCodes.delete(validSessionId);
@@ -124,36 +135,21 @@ class WhatsAppService {
         logger.error(`WhatsApp authentication failed for session ${validSessionId}:`, err);
         
         await this.cleanupAuthFolder(validSessionId);
-        setTimeout(() => this.initialize(validSessionId), 5000);
-      });
-
-      client.on('disconnected', async (reason) => {
-        this.isConnected.set(validSessionId, false);
-        this.qrCodes.delete(validSessionId);
-        logger.error(`WhatsApp client disconnected for session ${validSessionId}:`, reason);
         
-        try {
-          if (this.clients.has(validSessionId)) {
-            await this.clients.get(validSessionId).destroy();
-            this.clients.delete(validSessionId);
-            await new Promise(resolve => setTimeout(resolve, 5000));
-          }
-          
-          await this.cleanupAuthFolder(validSessionId);
-          
-          setTimeout(() => {
-            if (!this.isInitializing.get(validSessionId)) {
-              this.initialize(validSessionId);
-            }
-          }, 5000);
-        } catch (error) {
-          logger.error('Error handling disconnection:', error);
+        if (!this.isInitializing.get(validSessionId)) {
+          setTimeout(() => this.initialize(validSessionId), 5000);
         }
       });
 
-      await client.initialize();
+      logger.info('Starting WhatsApp client initialization...');
+      await client.initialize().catch(err => {
+        logger.error('Error during client initialization:', err);
+        throw err;
+      });
+      
       this.clients.set(validSessionId, client);
       logger.info(`WhatsApp client initialized successfully for session ${validSessionId}`);
+
     } catch (error) {
       logger.error(`WhatsApp initialization error for session ${validSessionId}:`, error);
       this.isConnected.set(validSessionId, false);
@@ -168,7 +164,9 @@ class WhatsAppService {
         this.clients.delete(validSessionId);
       }
       
-      setTimeout(() => this.initialize(validSessionId), 10000);
+      if (!this.isInitializing.get(validSessionId)) {
+        setTimeout(() => this.initialize(validSessionId), 10000);
+      }
     } finally {
       this.isInitializing.delete(validSessionId);
     }
