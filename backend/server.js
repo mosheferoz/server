@@ -26,9 +26,11 @@ const io = require('socket.io')(server, {
 
 // Middleware
 app.use(cors({
-  origin: '*',
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.CORS_ORIGIN.split(',')
+    : '*',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(bodyParser.json());
 app.use(helmet());
@@ -69,7 +71,7 @@ app.use((err, req, res, next) => {
 // הגעלת השרת
 const startServer = async (retries = 3) => {
   const PORT = process.env.PORT || 3000;
-  const HOST = process.env.HOST || 'localhost';
+  const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
   
   try {
     await new Promise((resolve, reject) => {
@@ -77,26 +79,30 @@ const startServer = async (retries = 3) => {
         .once('error', (err) => {
           if (err.code === 'EADDRINUSE') {
             logger.warn(`Port ${PORT} is busy, trying to close existing connection...`);
-            require('child_process').exec(`npx kill-port ${PORT}`, async (error) => {
-              if (error) {
-                logger.error('Failed to kill port:', error);
-                if (retries > 0) {
-                  logger.info(`Retrying... (${retries} attempts left)`);
-                  setTimeout(() => startServer(retries - 1), 1000);
+            if (process.env.NODE_ENV !== 'production') {
+              // רק בסביבת פיתוח ננסה לשחרר את הפורט
+              require('child_process').exec(`npx kill-port ${PORT}`, async (error) => {
+                if (error) {
+                  logger.error('Failed to kill port:', error);
+                  if (retries > 0) {
+                    logger.info(`Retrying... (${retries} attempts left)`);
+                    setTimeout(() => startServer(retries - 1), 1000);
+                  } else {
+                    reject(error);
+                  }
                 } else {
-                  reject(error);
+                  setTimeout(() => startServer(retries), 1000);
                 }
-              } else {
-                // נסה שוב אחרי שחרור הפורט
-                setTimeout(() => startServer(retries), 1000);
-              }
-            });
+              });
+            } else {
+              reject(err);
+            }
           } else {
             reject(err);
           }
         })
         .once('listening', () => {
-          logger.info(`Server running on http://${HOST}:${PORT}`);
+          logger.info(`Server running on ${process.env.NODE_ENV === 'production' ? PORT : `http://${HOST}:${PORT}`}`);
           resolve();
         });
     });

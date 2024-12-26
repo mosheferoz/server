@@ -4,7 +4,7 @@
   "description": "WhatsApp Bulk Message Sender with Web Scraping",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "NODE_ENV=production node server.js",
     "dev": "npx kill-port 3000 && nodemon --no-warnings server.js",
     "lint": "eslint .",
     "test": "jest",
