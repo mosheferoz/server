@@ -18,7 +18,7 @@ module.exports = {
     retryInterval: parseInt(process.env.WHATSAPP_RETRY_INTERVAL) || 5000,
     maxConcurrentMessages: parseInt(process.env.MAX_CONCURRENT_MESSAGES) || 5,
     messageDelayMs: parseInt(process.env.MESSAGE_DELAY_MS) || 1000,
-    clientId: (process.env.WHATSAPP_CLIENT_ID || 'default').replace(/[^a-zA-Z0-9_-]/g, '_')
+    clientId: process.env.WHATSAPP_CLIENT_ID || 'client-one'
   },
   security: {
     jwtSecret: process.env.JWT_SECRET || 'default-secret-key',
