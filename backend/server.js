@@ -69,26 +69,38 @@ app.use((err, req, res, next) => {
 })();
 
 // הגעלת השרת
-const startServer = async () => {
-  // קבלת הפורט מRender או שימוש בברירת מחדל
+const startServer = async (retries = 3) => {
   const PORT = process.env.PORT || 3000;
   
   try {
-    // הגדרת האזנה לכל הממשקים
-    const options = {
-      port: PORT,
-      host: '0.0.0.0'
-    };
-
     await new Promise((resolve, reject) => {
-      server.listen(options)
+      server.listen(PORT)
         .once('error', (err) => {
-          logger.error('Server error:', err);
-          reject(err);
+          if (err.code === 'EADDRINUSE') {
+            logger.warn(`Port ${PORT} is busy, trying to close existing connection...`);
+            if (process.env.NODE_ENV !== 'production') {
+              require('child_process').exec(`npx kill-port ${PORT}`, async (error) => {
+                if (error) {
+                  logger.error('Failed to kill port:', error);
+                  if (retries > 0) {
+                    logger.info(`Retrying... (${retries} attempts left)`);
+                    setTimeout(() => startServer(retries - 1), 1000);
+                  } else {
+                    reject(error);
+                  }
+                } else {
+                  setTimeout(() => startServer(retries), 1000);
+                }
+              });
+            } else {
+              reject(err);
+            }
+          } else {
+            reject(err);
+          }
         })
         .once('listening', () => {
-          const addr = server.address();
-          logger.info(`Server is running on port ${addr.port}`);
+          logger.info(`Server running on port ${PORT}`);
           resolve();
         });
     });
