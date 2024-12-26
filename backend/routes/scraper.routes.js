@@ -5,7 +5,7 @@ const path = require('path');
 const os = require('os');
 const logger = require('../logger');
 
-router.post('/', async (req, res) => {
+router.post('/scrape', async (req, res) => {
     try {
         const { url } = req.body;
         logger.info(`התחלת תהליך סקרייפינג עבור URL: ${url}`);
