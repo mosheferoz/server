@@ -92,7 +92,7 @@ app.use((err, req, res, next) => {
 // אתחול WhatsApp והפעלת השרת
 (async () => {
   try {
-    await whatsappService.initialize();
+    await whatsappService.initialize('default');
     await startServer();
   } catch (err) {
     logger.error('Failed to initialize:', err);

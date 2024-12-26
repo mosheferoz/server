@@ -51,24 +51,26 @@ class WhatsAppService {
     }
   }
 
-  async initialize(sessionId) {
-    if (this.isInitializing.get(sessionId)) {
-      logger.info(`WhatsApp client is already initializing for session ${sessionId}`);
+  async initialize(sessionId = 'default') {
+    const validSessionId = sessionId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    
+    if (this.isInitializing.get(validSessionId)) {
+      logger.info(`WhatsApp client is already initializing for session ${validSessionId}`);
       return;
     }
 
     try {
-      this.isInitializing.set(sessionId, true);
-      this.isConnected.set(sessionId, false);
-      logger.info(`Starting WhatsApp client initialization for session ${sessionId}...`);
+      this.isInitializing.set(validSessionId, true);
+      this.isConnected.set(validSessionId, false);
+      logger.info(`Starting WhatsApp client initialization for session ${validSessionId}...`);
 
-      await this.cleanupAuthFolder(sessionId);
-      const sessionPath = path.join(this.authPath, `session-${sessionId}`);
+      await this.cleanupAuthFolder(validSessionId);
+      const sessionPath = path.join(this.authPath, `session-${validSessionId}`);
 
       const client = new Client({
         restartOnAuthFail: true,
         authStrategy: new LocalAuth({
-          clientId: sessionId,
+          clientId: validSessionId,
           dataPath: sessionPath
         }),
         puppeteer: {
@@ -93,55 +95,55 @@ class WhatsAppService {
       });
 
       client.on('ready', () => {
-        this.isConnected.set(sessionId, true);
-        this.qrCodes.delete(sessionId);
-        logger.info(`WhatsApp client is ready and connected for session ${sessionId}`);
+        this.isConnected.set(validSessionId, true);
+        this.qrCodes.delete(validSessionId);
+        logger.info(`WhatsApp client is ready and connected for session ${validSessionId}`);
       });
 
       client.on('qr', async (qr) => {
         try {
-          logger.info(`Received QR code from WhatsApp for session ${sessionId}`);
+          logger.info(`Received QR code from WhatsApp for session ${validSessionId}`);
           const qrCode = await qrcode.toDataURL(qr);
-          this.qrCodes.set(sessionId, qrCode);
+          this.qrCodes.set(validSessionId, qrCode);
           logger.info('QR code converted to data URL');
         } catch (error) {
           logger.error('Error generating QR code:', error);
-          this.qrCodes.delete(sessionId);
+          this.qrCodes.delete(validSessionId);
         }
       });
 
       client.on('authenticated', () => {
-        this.isConnected.set(sessionId, true);
-        this.qrCodes.delete(sessionId);
-        logger.info(`WhatsApp client authenticated for session ${sessionId}`);
+        this.isConnected.set(validSessionId, true);
+        this.qrCodes.delete(validSessionId);
+        logger.info(`WhatsApp client authenticated for session ${validSessionId}`);
       });
 
       client.on('auth_failure', async (err) => {
-        this.isConnected.set(sessionId, false);
-        this.qrCodes.delete(sessionId);
-        logger.error(`WhatsApp authentication failed for session ${sessionId}:`, err);
+        this.isConnected.set(validSessionId, false);
+        this.qrCodes.delete(validSessionId);
+        logger.error(`WhatsApp authentication failed for session ${validSessionId}:`, err);
         
-        await this.cleanupAuthFolder(sessionId);
-        setTimeout(() => this.initialize(sessionId), 5000);
+        await this.cleanupAuthFolder(validSessionId);
+        setTimeout(() => this.initialize(validSessionId), 5000);
       });
 
       client.on('disconnected', async (reason) => {
-        this.isConnected.set(sessionId, false);
-        this.qrCodes.delete(sessionId);
-        logger.error(`WhatsApp client disconnected for session ${sessionId}:`, reason);
+        this.isConnected.set(validSessionId, false);
+        this.qrCodes.delete(validSessionId);
+        logger.error(`WhatsApp client disconnected for session ${validSessionId}:`, reason);
         
         try {
-          if (this.clients.has(sessionId)) {
-            await this.clients.get(sessionId).destroy();
-            this.clients.delete(sessionId);
+          if (this.clients.has(validSessionId)) {
+            await this.clients.get(validSessionId).destroy();
+            this.clients.delete(validSessionId);
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
           
-          await this.cleanupAuthFolder(sessionId);
+          await this.cleanupAuthFolder(validSessionId);
           
           setTimeout(() => {
-            if (!this.isInitializing.get(sessionId)) {
-              this.initialize(sessionId);
+            if (!this.isInitializing.get(validSessionId)) {
+              this.initialize(validSessionId);
             }
           }, 5000);
         } catch (error) {
@@ -150,25 +152,25 @@ class WhatsAppService {
       });
 
       await client.initialize();
-      this.clients.set(sessionId, client);
-      logger.info(`WhatsApp client initialized successfully for session ${sessionId}`);
+      this.clients.set(validSessionId, client);
+      logger.info(`WhatsApp client initialized successfully for session ${validSessionId}`);
     } catch (error) {
-      logger.error(`WhatsApp initialization error for session ${sessionId}:`, error);
-      this.isConnected.set(sessionId, false);
-      this.qrCodes.delete(sessionId);
+      logger.error(`WhatsApp initialization error for session ${validSessionId}:`, error);
+      this.isConnected.set(validSessionId, false);
+      this.qrCodes.delete(validSessionId);
       
-      if (this.clients.has(sessionId)) {
+      if (this.clients.has(validSessionId)) {
         try {
-          await this.clients.get(sessionId).destroy();
+          await this.clients.get(validSessionId).destroy();
         } catch (destroyError) {
           logger.error('Error destroying client:', destroyError);
         }
-        this.clients.delete(sessionId);
+        this.clients.delete(validSessionId);
       }
       
-      setTimeout(() => this.initialize(sessionId), 10000);
+      setTimeout(() => this.initialize(validSessionId), 10000);
     } finally {
-      this.isInitializing.delete(sessionId);
+      this.isInitializing.delete(validSessionId);
     }
   }
 
