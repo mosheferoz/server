@@ -38,7 +38,7 @@ app.use(compression());
 app.use(rateLimiter);
 
 // נתיבים
-app.use('/api/scraper', scraperRoutes);
+app.use('/api/scraper/scrape', scraperRoutes);
 app.use('/api/whatsapp', require('./routes/whatsapp.routes'));
 
 // נתיב בדיקת בריאות
