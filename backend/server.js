@@ -79,36 +79,25 @@ app.use((err, req, res, next) => {
 // הגעלת השרת
 const startServer = async (retries = 3) => {
   const PORT = process.env.PORT || 3000;
-  const HOST = process.env.HOST || 'localhost';
   
   try {
     await new Promise((resolve, reject) => {
-      server.listen(PORT, HOST)
-        .once('error', (err) => {
-          if (err.code === 'EADDRINUSE') {
-            logger.warn(`Port ${PORT} is busy, trying to close existing connection...`);
-            require('child_process').exec(`npx kill-port ${PORT}`, async (error) => {
-              if (error) {
-                logger.error('Failed to kill port:', error);
-                if (retries > 0) {
-                  logger.info(`Retrying... (${retries} attempts left)`);
-                  setTimeout(() => startServer(retries - 1), 1000);
-                } else {
-                  reject(error);
-                }
-              } else {
-                // נסה שוב אחרי שחרור הפורט
-                setTimeout(() => startServer(retries), 1000);
-              }
-            });
+      server.listen(PORT, () => {
+        logger.info(`Server running on port ${PORT}`);
+        resolve();
+      }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          logger.warn(`Port ${PORT} is busy, trying to close existing connection...`);
+          if (retries > 0) {
+            logger.info(`Retrying... (${retries} attempts left)`);
+            setTimeout(() => startServer(retries - 1), 1000);
           } else {
             reject(err);
           }
-        })
-        .once('listening', () => {
-          logger.info(`Server running on http://${HOST}:${PORT}`);
-          resolve();
-        });
+        } else {
+          reject(err);
+        }
+      });
     });
   } catch (error) {
     logger.error('Failed to start server:', error);

@@ -16,9 +16,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
-      - key: HOST
-        value: 0.0.0.0
+        value: "3000"
       - key: PYTHON_VENV_PATH
         value: ./venv
       - key: WHATSAPP_SESSION_PATH
