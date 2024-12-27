@@ -7,7 +7,7 @@ services:
       . venv/bin/activate
       pip install beautifulsoup4 selenium requests webdriver_manager
       npm install
-    startCommand: node server.js
+    startCommand: npm start
     disk:
       name: whatsapp-data
       mountPath: /opt/render/project/src/whatsapp-auth
