@@ -4,11 +4,12 @@
   "description": "WhatsApp Bulk Message Sender with Web Scraping",
   "main": "server.js",
   "scripts": {
-    "start": "NODE_ENV=production node server.js",
+    "start": "node server.js",
     "dev": "npx kill-port 3000 && nodemon --no-warnings server.js",
     "lint": "eslint .",
     "test": "jest",
-    "logs": "tail -f ./logs/app.log"
+    "logs": "tail -f ./logs/app.log",
+    "build": "npm install && python3 -m venv venv && source venv/bin/activate && pip install beautifulsoup4 selenium requests webdriver_manager"
   },
   "dependencies": {
     "axios": "^1.7.9",

@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: whatsapp-bulk-sender
+    env: node
+    buildCommand: |
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install beautifulsoup4 selenium requests webdriver_manager
+      npm install
+    startCommand: node server.js
+    disk:
+      name: whatsapp-data
+      mountPath: /opt/render/project/src/whatsapp-auth
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: PYTHON_VENV_PATH
+        value: ./venv
+      - key: WHATSAPP_SESSION_PATH
+        value: /opt/render/project/src/whatsapp-auth
+      - key: LOG_FILE_PATH
+        value: ./logs/app.log
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: JWT_SECRET
+        sync: false 
