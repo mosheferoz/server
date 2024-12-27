@@ -46,6 +46,19 @@ app.use(compression());
 app.use(rateLimiter);
 
 // נתיבים
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'WhatsApp Bulk Sender API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      whatsapp: '/api/whatsapp',
+      scraper: '/api/scraper'
+    }
+  });
+});
+
 app.use('/api/scraper', scraperRoutes);
 app.use('/api/whatsapp', require('./routes/whatsapp.routes'));
 
@@ -56,7 +69,15 @@ app.use('/api/health', (req, res) => {
 
 // טיפול בשגיאות 404
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ 
+    error: 'Route not found',
+    availableEndpoints: {
+      root: '/',
+      health: '/api/health',
+      whatsapp: '/api/whatsapp',
+      scraper: '/api/scraper'
+    }
+  });
 });
 
 // טיפול בשגיאות כלליות
