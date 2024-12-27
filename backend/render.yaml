@@ -4,7 +4,7 @@ services:
     env: node
     buildCommand: |
       python3 -m venv venv
-      source venv/bin/activate
+      . venv/bin/activate
       pip install beautifulsoup4 selenium requests webdriver_manager
       npm install
     startCommand: node server.js
