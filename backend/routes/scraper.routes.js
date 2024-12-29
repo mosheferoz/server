@@ -50,14 +50,20 @@ router.post('/scrape', async (req, res) => {
         // טיפול בשגיאות תהליך
         pythonProcess.on('error', (error) => {
             logger.error('Failed to start Python process:', error);
-            res.status(500).json({ 
-                error: 'Failed to start scraping process',
-                details: error.message
-            });
+            if (!res.headersSent) {
+                res.status(500).json({ 
+                    error: 'Failed to start scraping process',
+                    details: error.message
+                });
+            }
         });
 
         pythonProcess.on('close', (code) => {
             logger.info('Python process exited with code:', code);
+            
+            if (res.headersSent) {
+                return;
+            }
             
             if (code !== 0) {
                 logger.error('Python process failed');

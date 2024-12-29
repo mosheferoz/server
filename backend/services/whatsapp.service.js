@@ -234,7 +234,8 @@ class WhatsAppService {
         return {
           success: true,
           phoneNumber: formattedNumber,
-          message: message
+          message: message,
+          chatId: chatId
         };
       } catch (error) {
         logger.error('Error in sendMessage:', error);
@@ -242,6 +243,34 @@ class WhatsAppService {
       }
     } catch (error) {
       logger.error(`Top level error in sendMessage for session ${sessionId}:`, error);
+      throw error;
+    }
+  }
+
+  async archiveChat(sessionId, chatId) {
+    try {
+      logger.info(`Attempting to archive chat ${chatId} for session ${sessionId}`);
+      
+      if (!this.isConnected.get(sessionId)) {
+        throw new Error('WhatsApp client is not connected');
+      }
+
+      const client = this.clients.get(sessionId);
+      if (!client) {
+        throw new Error('WhatsApp client not found');
+      }
+
+      const chat = await client.getChatById(chatId);
+      if (!chat) {
+        throw new Error('Chat not found');
+      }
+
+      await chat.archive();
+      logger.info(`Chat ${chatId} archived successfully`);
+      
+      return true;
+    } catch (error) {
+      logger.error(`Error archiving chat ${chatId}:`, error);
       throw error;
     }
   }

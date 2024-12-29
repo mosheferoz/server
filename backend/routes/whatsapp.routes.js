@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const whatsappService = require('../services/whatsapp.service');
-const { db, admin } = require('../database/firebase');
 const logger = require('../logger');
 const authMiddleware = require('../middleware/auth');
 
@@ -56,7 +55,7 @@ router.post('/send', async (req, res) => {
   try {
     logger.info('Received send request - Full body:', req.body);
     
-    const { phoneNumber, message, recipientName, sessionId } = req.body;
+    const { phoneNumber, message, recipientName, sessionId, shouldArchive = false } = req.body;
     
     if (!sessionId) {
       logger.error('Missing sessionId');
@@ -113,29 +112,24 @@ router.post('/send', async (req, res) => {
         recipientName: recipientName || 'not provided'
       });
 
-      await whatsappService.sendMessage(sessionId, cleanPhoneNumber, finalMessage);
+      const result = await whatsappService.sendMessage(sessionId, cleanPhoneNumber, finalMessage);
       
-      // שמירת היסטוריה אם Firebase זמין
-      try {
-        if (db && admin) {
-          await db.collection('message_history').add({
-            sessionId,
-            phoneNumber: cleanPhoneNumber,
-            message: finalMessage,
-            status: 'sent',
-            timestamp: admin.firestore.FieldValue.serverTimestamp()
-          });
-          logger.info('Message history saved to Firebase');
+      // אם נדרש לארכב את הצ'אט
+      if (shouldArchive && result.chatId) {
+        try {
+          await whatsappService.archiveChat(sessionId, result.chatId);
+          logger.info(`Chat archived successfully for ${cleanPhoneNumber}`);
+        } catch (archiveError) {
+          logger.warn('Failed to archive chat:', archiveError);
         }
-      } catch (dbError) {
-        logger.warn('Failed to save message history:', dbError);
       }
       
       logger.info('Message sent successfully');
       res.json({ 
         success: true,
         phoneNumber: cleanPhoneNumber,
-        message: finalMessage
+        message: finalMessage,
+        archived: shouldArchive
       });
     } catch (error) {
       logger.error('Error processing message:', error);
@@ -153,57 +147,25 @@ router.post('/send', async (req, res) => {
   }
 });
 
-router.post('/history', async (req, res) => {
+router.post('/archive', async (req, res) => {
   try {
-    // בדיקה אם Firebase זמין
-    if (!db || !admin) {
-      logger.warn('Firebase is not configured, history feature is disabled');
-      return res.status(503).json({
-        error: 'History feature is disabled',
-        details: 'Firebase is not configured'
-      });
-    }
-
-    logger.info('Received history request - Full body:', req.body);
-    logger.info('Headers:', req.headers);
+    const { sessionId, chatId } = req.body;
     
-    const { phoneNumber, message, status, sessionId } = req.body;
-    logger.info('Extracted fields:', { phoneNumber, message, status, sessionId });
-    
-    if (!phoneNumber || !message || !sessionId) {
-      logger.warn('Missing required fields for history:', { 
-        hasPhoneNumber: !!phoneNumber, 
-        hasMessage: !!message,
-        hasSessionId: !!sessionId,
-        body: JSON.stringify(req.body)
-      });
-      return res.status(400).json({ 
+    if (!sessionId || !chatId) {
+      return res.status(400).json({
         error: 'Missing required fields',
-        details: { 
-          hasPhoneNumber: !!phoneNumber, 
-          hasMessage: !!message,
-          hasSessionId: !!sessionId,
-          receivedFields: Object.keys(req.body),
-          fullBody: req.body
-        }
+        details: 'Session ID and Chat ID are required'
       });
     }
 
-    const docRef = await db.collection('message_history').add({
-      sessionId,
-      phoneNumber,
-      message,
-      status: status || 'pending',
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
-    });
-
-    logger.info('History saved successfully:', { id: docRef.id });
+    await whatsappService.archiveChat(sessionId, chatId);
+    
     res.json({ 
       success: true,
-      id: docRef.id
+      message: 'Chat archived successfully'
     });
   } catch (error) {
-    logger.error('Error in /history:', error);
+    logger.error('Error in /archive:', error);
     res.status(500).json({ 
       error: error.message,
       details: error.stack
