@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 
 const firebaseConfig = process.env.FIREBASE_PROJECT_ID ? {
   projectId: process.env.FIREBASE_PROJECT_ID,
@@ -9,12 +10,12 @@ const firebaseConfig = process.env.FIREBASE_PROJECT_ID ? {
 module.exports = {
   server: {
     port: process.env.PORT || 3000,
-    host: process.env.HOST || 'localhost',
+    host: process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost',
     env: process.env.NODE_ENV || 'development'
   },
   firebase: firebaseConfig,
   whatsapp: {
-    sessionPath: process.env.WHATSAPP_SESSION_PATH || './whatsapp-auth',
+    sessionPath: process.env.WHATSAPP_SESSION_PATH || path.join(__dirname, 'whatsapp-auth'),
     retryInterval: parseInt(process.env.WHATSAPP_RETRY_INTERVAL) || 5000,
     maxConcurrentMessages: parseInt(process.env.MAX_CONCURRENT_MESSAGES) || 5,
     messageDelayMs: parseInt(process.env.MESSAGE_DELAY_MS) || 1000,
@@ -27,8 +28,10 @@ module.exports = {
     rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100
   },
   logging: {
-    level: process.env.LOG_LEVEL || 'info',
-    filePath: process.env.LOG_FILE_PATH || './logs/app.log'
+    level: process.env.LOG_LEVEL || 'debug',
+    filePath: process.env.LOG_FILE_PATH || path.join(__dirname, 'logs', 'app.log'),
+    maxSize: '10m',
+    maxFiles: '7d'
   },
   scraping: {
     timeout: parseInt(process.env.SCRAPING_TIMEOUT) || 30000,

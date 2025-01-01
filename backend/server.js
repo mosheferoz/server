@@ -26,9 +26,11 @@ const io = require('socket.io')(server, {
 
 // Middleware
 app.use(cors({
-  origin: '*',
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.CORS_ORIGIN.split(',')
+    : '*',
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(bodyParser.json());
 app.use(helmet());
@@ -44,9 +46,41 @@ app.use('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// הוסף את זה לפני הטיפול בשגיאות 404
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    message: 'WhatsApp Bulk Sender API',
+    endpoints: {
+      health: '/api/health',
+      whatsapp: {
+        qr: '/api/whatsapp/qr/:sessionId',
+        status: '/api/whatsapp/status/:sessionId',
+        send: '/api/whatsapp/send',
+        history: '/api/whatsapp/history'
+      },
+      scraper: '/api/scraper/scrape'
+    }
+  });
+});
+
 // טיפול בשגיאות 404
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  logger.warn(`404 - Route not found: ${req.method} ${req.url}`);
+  res.status(404).json({ 
+    error: 'Route not found',
+    requestedPath: req.url,
+    availableEndpoints: {
+      health: '/api/health',
+      whatsapp: {
+        qr: '/api/whatsapp/qr/:sessionId',
+        status: '/api/whatsapp/status/:sessionId',
+        send: '/api/whatsapp/send',
+        history: '/api/whatsapp/history'
+      },
+      scraper: '/api/scraper/scrape'
+    }
+  });
 });
 
 // טיפול בשגיאות כלליות
@@ -69,34 +103,36 @@ app.use((err, req, res, next) => {
 // הגעלת השרת
 const startServer = async (retries = 3) => {
   const PORT = process.env.PORT || 3000;
-  const HOST = process.env.HOST || 'localhost';
   
   try {
     await new Promise((resolve, reject) => {
-      server.listen(PORT, HOST)
+      server.listen(PORT)
         .once('error', (err) => {
           if (err.code === 'EADDRINUSE') {
             logger.warn(`Port ${PORT} is busy, trying to close existing connection...`);
-            require('child_process').exec(`npx kill-port ${PORT}`, async (error) => {
-              if (error) {
-                logger.error('Failed to kill port:', error);
-                if (retries > 0) {
-                  logger.info(`Retrying... (${retries} attempts left)`);
-                  setTimeout(() => startServer(retries - 1), 1000);
+            if (process.env.NODE_ENV !== 'production') {
+              require('child_process').exec(`npx kill-port ${PORT}`, async (error) => {
+                if (error) {
+                  logger.error('Failed to kill port:', error);
+                  if (retries > 0) {
+                    logger.info(`Retrying... (${retries} attempts left)`);
+                    setTimeout(() => startServer(retries - 1), 1000);
+                  } else {
+                    reject(error);
+                  }
                 } else {
-                  reject(error);
+                  setTimeout(() => startServer(retries), 1000);
                 }
-              } else {
-                // נסה שוב אחרי שחרור הפורט
-                setTimeout(() => startServer(retries), 1000);
-              }
-            });
+              });
+            } else {
+              reject(err);
+            }
           } else {
             reject(err);
           }
         })
         .once('listening', () => {
-          logger.info(`Server running on http://${HOST}:${PORT}`);
+          logger.info(`Server running on port ${PORT}`);
           resolve();
         });
     });
