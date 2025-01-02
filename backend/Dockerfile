@@ -2,7 +2,7 @@ FROM node:18-slim
 
 # Install Chromium and its dependencies
 RUN apt-get update \
-    && apt-get install -y chromium \
+    && apt-get install -y chromium-browser \
     fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
@@ -20,7 +20,7 @@ RUN npm install
 COPY . .
 
 # Set environment variables
-ENV CHROME_BIN=/usr/bin/chromium
+ENV CHROME_BIN=/usr/bin/chromium-browser
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV NODE_ENV=production
 

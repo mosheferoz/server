@@ -10,21 +10,43 @@ const csv = require('csv-parser');
 
 // Chrome executable paths for different environments
 const CHROME_PATHS = {
-  RENDER: process.env.CHROME_BIN || '/usr/bin/chromium',
-  RENDER_ALT: '/usr/bin/chromium-browser',
+  RENDER: process.env.CHROME_BIN || '/usr/bin/chromium-browser',
+  RENDER_ALT: '/usr/bin/chromium',
   DEFAULT: process.env.CHROME_PATH
 };
 
 // Function to find available Chrome executable
 const findChromeExecutable = () => {
+  logger.info('Looking for Chrome executable in paths:', CHROME_PATHS);
+  
   for (const [env, path] of Object.entries(CHROME_PATHS)) {
+    logger.info(`Checking ${env} path: ${path}`);
     if (path && fs.existsSync(path)) {
       logger.info(`Found Chrome executable at ${path} (${env})`);
       return path;
+    } else if (path) {
+      logger.warn(`Path ${path} does not exist`);
     }
   }
-  logger.warn('No Chrome executable found in known locations');
-  return null;
+  
+  // Try to find Chrome in common Linux paths
+  const commonPaths = [
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable'
+  ];
+  
+  for (const path of commonPaths) {
+    logger.info(`Checking common path: ${path}`);
+    if (fs.existsSync(path)) {
+      logger.info(`Found Chrome executable at ${path}`);
+      return path;
+    }
+  }
+  
+  logger.warn('No Chrome executable found in any known locations');
+  return CHROME_PATHS.RENDER; // Return default path even if not found
 };
 
 class WhatsAppService {
@@ -105,7 +127,8 @@ class WhatsAppService {
             '--disable-cache',
             '--disable-application-cache',
             '--disable-offline-load-stale-cache',
-            '--disk-cache-size=0'
+            '--disk-cache-size=0',
+            '--disable-software-rasterizer'
           ],
           timeout: 120000,
           waitForInitialPage: true,
