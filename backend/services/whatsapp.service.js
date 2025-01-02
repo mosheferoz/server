@@ -8,10 +8,23 @@ const path = require('path');
 const { LocalAuth } = require('whatsapp-web.js');
 const csv = require('csv-parser');
 
-// Chrome executable path for different environments
+// Chrome executable paths for different environments
 const CHROME_PATHS = {
-  RENDER: '/usr/bin/google-chrome',
+  RENDER: process.env.CHROME_BIN || '/usr/bin/chromium',
+  RENDER_ALT: '/usr/bin/chromium-browser',
   DEFAULT: process.env.CHROME_PATH
+};
+
+// Function to find available Chrome executable
+const findChromeExecutable = () => {
+  for (const [env, path] of Object.entries(CHROME_PATHS)) {
+    if (path && fs.existsSync(path)) {
+      logger.info(`Found Chrome executable at ${path} (${env})`);
+      return path;
+    }
+  }
+  logger.warn('No Chrome executable found in known locations');
+  return null;
 };
 
 class WhatsAppService {
@@ -79,7 +92,7 @@ class WhatsAppService {
         }),
         puppeteer: {
           headless: true,
-          executablePath: CHROME_PATHS.RENDER || CHROME_PATHS.DEFAULT,
+          executablePath: findChromeExecutable(),
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
