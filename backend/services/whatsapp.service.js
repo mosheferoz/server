@@ -8,6 +8,12 @@ const path = require('path');
 const { LocalAuth } = require('whatsapp-web.js');
 const csv = require('csv-parser');
 
+// Chrome executable path for different environments
+const CHROME_PATHS = {
+  RENDER: '/usr/bin/google-chrome',
+  DEFAULT: process.env.CHROME_PATH
+};
+
 class WhatsAppService {
   constructor() {
     this.clients = new Map();
@@ -73,6 +79,7 @@ class WhatsAppService {
         }),
         puppeteer: {
           headless: true,
+          executablePath: CHROME_PATHS.RENDER || CHROME_PATHS.DEFAULT,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
